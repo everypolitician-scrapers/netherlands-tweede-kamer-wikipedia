@@ -71,7 +71,6 @@ def scrape_term(url)
             start_date: from[:date],
             end_date: to[:date],
           }
-          warn data
           ScraperWiki.save_sqlite([:name, :wikiname, :party, :start_date, :term], data)
         end
       end
