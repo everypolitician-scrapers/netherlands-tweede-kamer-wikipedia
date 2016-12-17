@@ -78,4 +78,5 @@ def scrape_term(url)
   end
 end
 
+ScraperWiki.sqliteexecute('DELETE FROM data') rescue nil
 scrape_term('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2012-heden')
