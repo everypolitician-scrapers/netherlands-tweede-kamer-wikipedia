@@ -1,5 +1,6 @@
 #!/bin/env ruby
 # encoding: utf-8
+# frozen_string_literal: true
 
 require 'nokogiri'
 require 'open-uri'
@@ -11,7 +12,7 @@ OpenURI::Cache.cache_path = '.cache'
 
 class String
   def tidy
-    self.gsub(/[[:space:]]+/, ' ').strip
+    gsub(/[[:space:]]+/, ' ').strip
   end
 end
 
@@ -48,7 +49,7 @@ def scrape_term(url)
       people_list.css('li').each do |person|
         name = person.children.first.children.first.text
         wikiname = person.xpath('.//a[not(@class="new")]/@title').text
-        dates = [ { type: 'start', date: '' }]
+        dates = [{ type: 'start', date: '' }]
 
         person.text.scan(/\(([^\)]+)\)/).flatten.each do |bracketed|
           if sd = bracketed[/↑ (.*)/, 1]
@@ -62,16 +63,16 @@ def scrape_term(url)
         dates.shift if dates[1] && dates[1][:type] == 'start'
 
         dates.each_slice(2).each do |from, to|
-          data = { 
-            name: name,
-            wikiname: wikiname,
-            party: party,
+          data = {
+            name:           name,
+            wikiname:       wikiname,
+            party:          party,
             party_wikiname: party_wikiname,
-            term: 2012,
-            start_date: from[:date],
-            end_date: to[:date],
+            term:           2012,
+            start_date:     from[:date],
+            end_date:       to[:date],
           }
-          ScraperWiki.save_sqlite([:name, :wikiname, :party, :start_date, :term], data)
+          ScraperWiki.save_sqlite(%i(name wikiname party start_date term), data)
         end
       end
     end
