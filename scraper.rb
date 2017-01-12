@@ -40,8 +40,6 @@ def scrape_term(url)
     people_lists = h3.xpath('following::h3 | following::ul').slice_before { |e| e.name == 'h3' }.first
     people_lists.each do |people_list|
       people_list.css('li').each do |person|
-        name = person.children.first.children.first.text
-        wikiname = person.xpath('.//a[not(@class="new")]/@title').text
         dates = [{ type: 'start', date: '' }]
 
         person.text.scan(/\(([^\)]+)\)/).flatten.each do |bracketed|
@@ -57,8 +55,8 @@ def scrape_term(url)
 
         dates.each_slice(2).each do |from, to|
           data = {
-            name:           name,
-            wikiname:       wikiname,
+            name:           person.children.first.children.first.text,
+            wikiname:       person.xpath('.//a[not(@class="new")]/@title').text,
             party:          party,
             party_wikiname: party_wikiname,
             term:           2012,
