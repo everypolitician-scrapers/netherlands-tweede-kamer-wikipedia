@@ -34,7 +34,7 @@ def scrape_term(url)
   list = noko_between(noko, 'Samenstelling_van_de_kamer_sinds_12_september_2012', 'Bijzonderheden')
   list.css('h3').each do |h3|
     party_info = h3.children.first
-    party = party_info.children.first.text
+    party = party_info.children.first.text.split('(').first.tidy
     party_wikiname = party_info.xpath('.//a[not(@class="new")]/@title').text
 
     people_lists = h3.xpath('following::h3 | following::ul').slice_before { |e| e.name == 'h3' }.first
