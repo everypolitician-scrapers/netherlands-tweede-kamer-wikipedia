@@ -108,5 +108,37 @@ end
 data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2017-heden')
 data.each { |mem| puts mem.reject { |_, v| v.to_s.empty? }.sort_by { |k, _| k }.to_h } if ENV['MORPH_DEBUG']
 
+# Manual adjustments for the "Changes and details" section
+# This is very difficult to parse, so just hard-code them for now
+# Later, we'll hopefully be able to use Wikidata instead
+
+begin
+  date = '2017-03-23'
+  data.find { |r| r[:name] == 'Jan Middendorp' }[:start_date] = date
+  data << {
+    name: 'Sjoerd Potters',
+    wikiname: 'Sjoerd Potters',
+    party: 'VVD',
+    party_wikiname: "Volkspartij voor Vrijheid en Democratie",
+    term: '2017',
+    start_date: '',
+    end_date: date,
+  }
+end
+
+begin
+  date = '2017-09-06'
+  data.find { |r| r[:name] == 'Pieter Duisenberg' }[:end_date] = date
+  data << {
+    name: 'Roald van der Linde',
+    wikiname: 'Roald van der Linde',
+    party: 'VVD',
+    party_wikiname: "Volkspartij voor Vrijheid en Democratie",
+    term: '2017',
+    start_date: date,
+    end_date: '',
+  }
+end
+
 ScraperWiki.sqliteexecute('DROP TABLE data') rescue nil
 ScraperWiki.save_sqlite(%i[name wikiname party start_date term], data)
