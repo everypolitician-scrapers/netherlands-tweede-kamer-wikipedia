@@ -105,7 +105,7 @@ def term_data(url)
   end
 end
 
-data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2012-heden')
+data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2012-2017')
 # puts data
 
 ScraperWiki.sqliteexecute('DELETE FROM data') rescue nil
