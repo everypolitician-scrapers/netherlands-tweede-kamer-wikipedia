@@ -19,7 +19,7 @@ class ListPage < Scraped::HTML
   private
 
   def composition
-    noko_between(noko, 'Gekozen_bij_de_verkiezingen_van_12_september_2012', 'Bijzonderheden')
+    noko_between(noko, 'Samenstelling_van_de_Kamer_op_23_maart_2017', 'Wijzigingen_en_bijzonderheden')
   end
 
   def noko_between(noko, from_id, to_id)
@@ -99,13 +99,13 @@ def term_data(url)
   page.parties.map(&:to_h).flat_map do |party|
     party.delete(:members).map(&:to_h).flat_map do |member|
       member.delete(:memberships).map do |membership|
-        member.merge(party).merge(term: 2012).merge(membership)
+        member.merge(party).merge(term: 2017).merge(membership)
       end
     end
   end
 end
 
-data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2012-2017')
+data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2017-heden')
 data.each { |mem| puts mem.reject { |_, v| v.to_s.empty? }.sort_by { |k, _| k }.to_h } if ENV['MORPH_DEBUG']
 
 ScraperWiki.sqliteexecute('DROP TABLE data') rescue nil
