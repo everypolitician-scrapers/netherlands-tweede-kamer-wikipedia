@@ -109,4 +109,4 @@ data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2012-
 # puts data
 
 ScraperWiki.sqliteexecute('DELETE FROM data') rescue nil
-ScraperWiki.save_sqlite(%i(name wikiname party start_date term), data)
+ScraperWiki.save_sqlite(%i[name wikiname party start_date term], data)
