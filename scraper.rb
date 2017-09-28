@@ -19,7 +19,7 @@ class ListPage < Scraped::HTML
   private
 
   def composition
-    noko_between(noko, 'Samenstelling_van_de_kamer_sinds_12_september_2012', 'Bijzonderheden')
+    noko_between(noko, 'Gekozen_bij_de_verkiezingen_van_12_september_2012', 'Bijzonderheden')
   end
 
   def noko_between(noko, from_id, to_id)
