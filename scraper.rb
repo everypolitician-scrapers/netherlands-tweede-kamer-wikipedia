@@ -106,7 +106,7 @@ def term_data(url)
 end
 
 data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2012-2017')
-# puts data
+data.each { |mem| puts mem.reject { |_, v| v.to_s.empty? }.sort_by { |k, _| k }.to_h } if ENV['MORPH_DEBUG']
 
-ScraperWiki.sqliteexecute('DELETE FROM data') rescue nil
+ScraperWiki.sqliteexecute('DROP TABLE data') rescue nil
 ScraperWiki.save_sqlite(%i[name wikiname party start_date term], data)
