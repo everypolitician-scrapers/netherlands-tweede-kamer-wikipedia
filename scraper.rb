@@ -1,144 +1,73 @@
 #!/bin/env ruby
-# encoding: utf-8
 # frozen_string_literal: true
 
 require 'pry'
 require 'scraped'
 require 'scraperwiki'
+require 'wikidata_ids_decorator'
+
+require_rel 'lib'
 
 require 'open-uri/cached'
 OpenURI::Cache.cache_path = '.cache'
 
-class ListPage < Scraped::HTML
-  field :parties do
-    composition.css('h3').map do |h3|
-      fragment h3 => PartySection
-    end
-  end
-
-  private
-
-  def composition
-    noko_between(noko, 'Samenstelling_van_de_Kamer_op_23_maart_2017', 'Wijzigingen_en_bijzonderheden')
-  end
-
-  def noko_between(noko, from_id, to_id)
-    section_start = noko.css('#' + from_id)
-    raise "Can't find start section #{from_id}" if section_start.empty?
-
-    section_end = noko.css('#' + to_id)
-    raise "Can't find end section #{to_id}" if section_end.empty?
-
-    section_start.xpath('.//preceding::*').remove
-    section_end.xpath('.//following::*').remove
-    noko
+class String
+  def to_date
+    return if to_s.tidy.empty?
+    Date.parse(self).to_s rescue binding.pry
   end
 end
 
-class PartySection < Scraped::HTML
-  field :party do
-    party_info.children.first.text.split('(').first.tidy
-  end
-
-  field :party_wikiname do
-    party_info.xpath('.//a[not(@class="new")]/@title').text
-  end
+# Known good at https://nl.wikipedia.org/w/index.php?title=Samenstelling_Tweede_Kamer_2017-heden&oldid=51922042
+class MembersPage < Scraped::HTML
+  decorator RemoveFootnotes
+  decorator WikidataIdsDecorator::Links
 
   field :members do
-    following_lists.flat_map { |e| e.css('li') }.map do |li|
-      fragment li => MemberSection
-    end
-  end
-
-  private
-
-  def party_info
-    noko.children.first
-  end
-
-  def following_lists
-    noko.xpath('following::h3 | following::ul').slice_before { |e| e.name == 'h3' }.first
+    noko.xpath('//table[.//th[contains(.,"lidmaatschap")]]//tr[td]').map { |tr| fragment(tr => MemberRow).to_h }
   end
 end
 
-class MemberSection < Scraped::HTML
+class MemberRow < Scraped::HTML
+  field :id do
+    tds[0].css('a/@wikidata').map(&:text).first
+  end
+
   field :name do
-    noko.children.first.children.first.text
+    tds[0].css('a').map(&:text).first
   end
 
-  field :wikiname do
-    noko.xpath('.//a[not(@class="new")]/@title').text
+  field :party_id do
+    party_link.attr('wikidata')
   end
 
-  field :memberships do
-    dates = [{ type: 'start', date: '' }]
-    noko.text.scan(/\(([^\)]+)\)/).flatten.each do |bracketed|
-      if sd = bracketed[/↑ (.*)/, 1]
-        dates << { type: 'end', date: reverse_date(sd) }
-      elsif sd = bracketed[/↓ (.*)/, 1]
-        dates << { type: 'start', date: reverse_date(sd) }
-      end
-    end
+  field :party do
+    party_link.text.tidy
+  end
 
-    dates << { type: 'end', date: '' } unless dates[-1] && dates[-1][:type] == 'end'
-    dates.shift if dates[1] && dates[1][:type] == 'start'
-    dates.each_slice(2).map do |from, to|
-      { start_date: from[:date], end_date: to[:date] }
-    end
+  field :start_date do
+    tds[1].text.to_date
+  end
+
+  field :end_date do
+    tds[2].text.to_date
   end
 
   private
+
+  def tds
+    noko.css('td')
+  end
+
+  def party_link
+    noko.xpath('preceding::span[@class="mw-headline"]').last.css('a').first
+  end
 
   def reverse_date(str)
     str.split('-').reverse.map { |d| '%02d' % d }.join('-')
   end
 end
 
-def term_data(url)
-  page = ListPage.new(response: Scraped::Request.new(url: url).response)
-  page.parties.map(&:to_h).flat_map do |party|
-    party.delete(:members).map(&:to_h).flat_map do |member|
-      member.delete(:memberships).map do |membership|
-        member.merge(party).merge(term: 2017).merge(membership)
-      end
-    end
-  end
-end
-
-data = term_data('https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2017-heden')
-data.each { |mem| puts mem.reject { |_, v| v.to_s.empty? }.sort_by { |k, _| k }.to_h } if ENV['MORPH_DEBUG']
-
-# Manual adjustments for the "Changes and details" section
-# This is very difficult to parse, so just hard-code them for now
-# Later, we'll hopefully be able to use Wikidata instead
-
-begin
-  date = '2017-03-23'
-  data.find { |r| r[:name] == 'Jan Middendorp' }[:start_date] = date
-  data << {
-    name: 'Sjoerd Potters',
-    wikiname: 'Sjoerd Potters',
-    party: 'VVD',
-    party_wikiname: "Volkspartij voor Vrijheid en Democratie",
-    term: '2017',
-    start_date: '',
-    end_date: date,
-  }
-end
-
-begin
-  date = '2017-09-06'
-  data.find { |r| r[:name] == 'Pieter Duisenberg' }[:end_date] = date
-  data << {
-    name: 'Roald van der Linde',
-    wikiname: 'Roald van der Linde',
-    party: 'VVD',
-    party_wikiname: "Volkspartij voor Vrijheid en Democratie",
-    term: '2017',
-    start_date: date,
-    end_date: '',
-  }
-end
-
+url = 'https://nl.wikipedia.org/wiki/Samenstelling_Tweede_Kamer_2017-heden'
 ScraperWiki.sqliteexecute('DROP TABLE data') rescue nil
-ScraperWiki.save_sqlite(%i[name wikiname party start_date term], data)
+Scraped::Scraper.new(url => MembersPage).store(:members, index: %i[name party])
